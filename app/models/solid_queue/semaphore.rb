@@ -43,7 +43,10 @@ class SolidQueue::Semaphore < SolidQueue::Record
       end
 
       def attempt_decrement
-        proxied_class.available.where(key: key).update_all([ "value = value - 1, expires_at = ?", expires_at ]) > 0
+        proxied_class.transaction do
+          proxied_class.available.where(key: key).lock.pluck(:id)
+          proxied_class.available.where(key: key).update_all([ "value = value - 1, expires_at = ?", expires_at ]) > 0
+        end
       end
 
       def attempt_increment
